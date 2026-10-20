@@ -1,0 +1,21 @@
+server:
+  port: 80
+  baseURL: "/"
+
+http:
+  externalUrl: "https://files.${DOMAIN}"
+
+auth:
+  adminUsername: admin
+  methods:
+    password:
+      enabled: true
+      minLength: 8
+  signup: false
+
+sources:
+  - path: "/files"
+    name: "Files"
+    config:
+      defaultEnabled: true
+      createUserDir: false

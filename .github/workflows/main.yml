@@ -1,0 +1,58 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Prevent two pushes from racing on the same server
+concurrency:
+  group: deploy-filebrowser
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          APP_ENV: ${{ secrets.APP_ENV }}   # full contents of .env (see below)
+        with:
+          host:     ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key:      ${{ secrets.SSH_PRIVATE_KEY }}
+          envs:     APP_ENV
+          script: |
+           set -euo pipefail
+            APP_DIR=/opt/apps/${{ github.event.repository.name }}
+
+            if [ ! -d "$APP_DIR/.git" ]; then
+              git clone git@github.com:${{ github.repository }}.git "$APP_DIR"
+            fi
+            cd "$APP_DIR"
+            git fetch origin main && git reset --hard origin/main
+
+            # --- secrets / config ---
+            printf '%s\n' "$APP_ENV" > .env
+
+            # --- load .env so DOMAIN is available for templating ---
+            set -a; . ./.env; set +a
+            : "${DOMAIN:?DOMAIN missing from APP_ENV}"
+
+            # --- state dirs ---
+            mkdir -p data files
+
+            # --- render config from template (single source of truth: .env) ---
+            sed "s|\${DOMAIN}|${DOMAIN}|g" config.yaml.template > data/config.yaml
+
+            # --- sanity check: rendered URL must match the Traefik Host rule ---
+            grep -q "externalUrl: \"https://files.${DOMAIN}\"" data/config.yaml \
+              || { echo "config render mismatch for ${DOMAIN}"; exit 1; }
+
+            chown -R 1000:1000 data
+            chown 1000:1000 files
+
+            docker compose --env-file .env pull
+            docker compose --env-file .env up -d --remove-orphans
+            docker image prune -f
