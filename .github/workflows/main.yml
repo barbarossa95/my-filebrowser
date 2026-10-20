@@ -55,4 +55,6 @@ jobs:
 
             docker compose --env-file .env pull
             docker compose --env-file .env up -d --remove-orphans
+            # up -d ignores bind-mounted config changes; reload data/config.yaml
+            docker compose --env-file .env restart filebrowser
             docker image prune -f

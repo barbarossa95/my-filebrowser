@@ -59,15 +59,9 @@ Every push to `main` (or a manual run of the workflow) does the following on the
 2. Writes `.env` from the `APP_ENV` secret
 3. Renders `data/config.yaml` from the template and checks that `externalUrl` matches the domain
 4. Sets ownership of `data/` and `files/` to uid 1000
-5. Pulls the image, runs `docker compose up -d` and prunes old images
+5. Pulls the image, runs `docker compose up -d`, then restarts `filebrowser` so it reloads `data/config.yaml` (`up -d` alone doesn't notice config-only changes), and prunes old images
 
 Because of the hard reset, don't edit tracked files directly on the server.
-
-`docker compose up -d` only recreates the container when the image or `compose.yaml` changes. A deploy that only changes `config.yaml.template` leaves the container running the old config, so restart it on the server afterwards:
-
-```bash
-docker compose restart filebrowser
-```
 
 ### GitHub secrets
 
