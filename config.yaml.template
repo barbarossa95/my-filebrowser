@@ -1,8 +1,6 @@
-server:
+http:
   port: 80
   baseURL: "/"
-
-http:
   externalUrl: "https://files.${DOMAIN}"
 
 auth:
