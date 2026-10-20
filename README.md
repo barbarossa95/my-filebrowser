@@ -31,7 +31,9 @@ Copy `.env.example` to `.env` and fill it in:
 | `FILEBROWSER_ADMIN_PASSWORD` | yes | Password for the `admin` user (at least 8 characters) |
 | `TZ` | no | Container timezone (default `Europe/Moscow`) |
 
-`config.yaml.template` sets up password login only, disables sign-ups, and serves a single source, `/files`.
+`config.yaml.template` sets up password login only, disables sign-ups, serves a single source, `/files`, and trusts Traefik's `X-Forwarded-*` headers so FileBrowser sees real client IPs.
+
+The config format is FileBrowser Quantum's, not the original FileBrowser's: `port`, `baseURL` and `externalUrl` go under `http:`, sources go under `server.sources`, and `signup` goes under `auth.methods.password`. Keep the top-level `server:` key. The current stable release (v2.0.1) crashes at startup without it, with `panic: interface conversion: interface {} is nil`.
 
 ## Running manually
 
@@ -57,9 +59,15 @@ Every push to `main` (or a manual run of the workflow) does the following on the
 2. Writes `.env` from the `APP_ENV` secret
 3. Renders `data/config.yaml` from the template and checks that `externalUrl` matches the domain
 4. Sets ownership of `data/` and `files/` to uid 1000
-5. Pulls the image, restarts the stack and prunes old images
+5. Pulls the image, runs `docker compose up -d` and prunes old images
 
 Because of the hard reset, don't edit tracked files directly on the server.
+
+`docker compose up -d` only recreates the container when the image or `compose.yaml` changes. A deploy that only changes `config.yaml.template` leaves the container running the old config, so restart it on the server afterwards:
+
+```bash
+docker compose restart filebrowser
+```
 
 ### GitHub secrets
 
@@ -77,5 +85,6 @@ The server must also be able to run `git clone git@github.com:<owner>/<repo>.git
 ```bash
 docker compose logs -f filebrowser   # follow logs
 docker compose pull && docker compose up -d   # update the image
+docker compose restart filebrowser   # reload data/config.yaml
 docker compose down   # stop
 ```
