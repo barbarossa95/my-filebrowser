@@ -1,7 +1,16 @@
+server:
+  sources:
+    - path: "/files"
+      name: "Files"
+      config:
+        defaultEnabled: true
+        createUserDir: false
+
 http:
   port: 80
   baseURL: "/"
   externalUrl: "https://files.${DOMAIN}"
+  trustProxyHeaders: true # behind Traefik: use X-Forwarded-For for client IPs
 
 auth:
   adminUsername: admin
@@ -9,11 +18,4 @@ auth:
     password:
       enabled: true
       minLength: 8
-  signup: false
-
-sources:
-  - path: "/files"
-    name: "Files"
-    config:
-      defaultEnabled: true
-      createUserDir: false
+      signup: false
